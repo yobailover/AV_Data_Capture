@@ -1,4 +1,5 @@
 # AV Data Capture (CLI)
+Forks from https://github.com/yoshiko2/Movie_Data_Capture
 
 CLI 版本  
 ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)
@@ -57,4 +58,9 @@ When you run the software, you accept the following terms
 # Telegram讨论群
 * [点击进群](https://t.me/joinchat/J54y1g3-a7nxJ_-WS4-KFQ)
 
+# 使用源码运行
+如果运行源码版，运行前请安装Python环境和安装以下模块
 
+在终端中输入以下代码来安装模块
+
+``pip3 install -r requirements.txt``
