@@ -214,7 +214,12 @@ def get_data_from_json(file_number, filepath, conf: config.Config):  # 从JSON�
     json_data['release'] = release
     json_data['cover_small'] = cover_small
     json_data['tag'] = tag
-    json_data['naming_rule'] = eval(conf.naming_rule())
+    naming_result = eval(conf.naming_rule())
+    # If the title already starts with the number (e.g. missav returns "CAWD-969 Title"),
+    # strip the duplicate prefix to avoid "CAWD-969 CAWD-969 ..."
+    if title.startswith(number):
+        naming_result = title
+    json_data['naming_rule'] = naming_result
     json_data['location_rule'] = location_rule
     json_data['year'] = year
     json_data['actor_list'] = actor_list
@@ -238,9 +243,11 @@ def get_info(json_data):  # 返回json里的数据
     return title, studio, year, outline, runtime, director, actor_photo, release, number, cover, website, series, label
 
 
-def small_cover_check(path, number, cover_small, c_word, conf: config.Config, filepath, failed_folder):
-    download_file_with_filename(cover_small, number + c_word + '-poster.jpg', path, conf, filepath, failed_folder)
-    print('[+]Image Downloaded! ' + path + '/' + number + c_word + '-poster.jpg')
+def small_cover_check(path, number, cover_small, naming_rule_result, conf: config.Config, filepath, failed_folder):
+    base = naming_rule_result
+    poster_name = base + '.png'
+    download_file_with_filename(cover_small, poster_name, path, conf, filepath, failed_folder)
+    print('[+]Image Downloaded! ' + path + '/' + poster_name)
 
 
 def create_folder(success_folder, location_rule, json_data, conf: config.Config):  # 创建文件夹
@@ -312,46 +319,46 @@ def download_file_with_filename(url, filename, path, conf: config.Config, filepa
 
 
 # 封面是否下载成功，否则移动到failed
-def image_download(cover, number, c_word, path, conf: config.Config, filepath, failed_folder):
-    if download_file_with_filename(cover, number + c_word + '-fanart.jpg', path, conf, filepath, failed_folder) == 'failed':
+def image_download(cover, base, path, conf: config.Config, filepath, failed_folder):
+    fanart_name = base + '.jpg'
+    if download_file_with_filename(cover, fanart_name, path, conf, filepath, failed_folder) == 'failed':
         moveFailedFolder(filepath, failed_folder)
         return
 
     _proxy, _timeout, retry, _proxytype = conf.proxy()
     for i in range(retry):
-        if os.path.getsize(path + '/' + number + c_word + '-fanart.jpg') == 0:
+        if os.path.getsize(path + '/' + fanart_name) == 0:
             print('[!]Image Download Failed! Trying again. [{}/3]', i + 1)
-            download_file_with_filename(cover, number + c_word + '-fanart.jpg', path, conf, filepath, failed_folder)
+            download_file_with_filename(cover, fanart_name, path, conf, filepath, failed_folder)
             continue
         else:
             break
-    if os.path.getsize(path + '/' + number + c_word + '-fanart.jpg') == 0:
+    if os.path.getsize(path + '/' + fanart_name) == 0:
         return
-    print('[+]Image Downloaded!', path + '/' + number + c_word + '-fanart.jpg')
-    shutil.copyfile(path + '/' + number + c_word + '-fanart.jpg',path + '/' + number + c_word + '-thumb.jpg')
+    print('[+]Image Downloaded!', path + '/' + fanart_name)
 
 
-def print_files(path, c_word, naming_rule, part, cn_sub, json_data, filepath, failed_folder, tag, actor_list, liuchu):
+def print_files(path, base_nfo, naming_rule_evaluated, cn_sub, json_data, filepath, failed_folder, tag, actor_list, liuchu, base_thumb, base_fanart, base_poster):
     title, studio, year, outline, runtime, director, actor_photo, release, number, cover, website, series, label = get_info(json_data)
 
     try:
         if not os.path.exists(path):
             os.makedirs(path)
-        with open(path + "/" + number + part + c_word + ".nfo", "wt", encoding='UTF-8') as code:
+        with open(path + "/" + base_nfo + ".nfo", "wt", encoding='UTF-8') as code:
             print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
             print("<movie>", file=code)
-            print(" <title>" + naming_rule + "</title>", file=code)
+            print(" <title>" + base_nfo + "</title>", file=code)
             print("  <set>", file=code)
             print("  </set>", file=code)
-            print("  <studio>" + studio + "+</studio>", file=code)
+            print("  <studio>" + studio + "</studio>", file=code)
             print("  <year>" + year + "</year>", file=code)
             print("  <outline>" + outline + "</outline>", file=code)
             print("  <plot>" + outline + "</plot>", file=code)
             print("  <runtime>" + str(runtime).replace(" ", "") + "</runtime>", file=code)
             print("  <director>" + director + "</director>", file=code)
-            print("  <poster>" + number + c_word + "-poster.jpg</poster>", file=code)
-            print("  <thumb>" + number + c_word + "-thumb.jpg</thumb>", file=code)
-            print("  <fanart>" + number + c_word + '-fanart.jpg' + "</fanart>", file=code)
+            print("  <poster>" + base_poster + "</poster>", file=code)
+            print("  <thumb>" + base_thumb + "</thumb>", file=code)
+            print("  <fanart>" + base_fanart + "</fanart>", file=code)
             try:
                 for key in actor_list:
                     print("  <actor>", file=code)
@@ -383,7 +390,7 @@ def print_files(path, c_word, naming_rule, part, cn_sub, json_data, filepath, fa
             print("  <cover>" + cover + "</cover>", file=code)
             print("  <website>" + website + "</website>", file=code)
             print("</movie>", file=code)
-            print("[+]Wrote!            " + path + "/" + number + part + c_word + ".nfo")
+            print("[+]Wrote!            " + path + "/" + base_nfo + ".nfo")
     except IOError as e:
         print("[-]Write Failed!")
         print(e)
@@ -396,40 +403,40 @@ def print_files(path, c_word, naming_rule, part, cn_sub, json_data, filepath, fa
         return
 
 
-def cutImage(imagecut, path, number, c_word):
+def cutImage(imagecut, base_fanart, base_poster, path):
     if imagecut == 1: # 剪裁大封面
         try:
-            img = Image.open(path + '/' + number + c_word + '-fanart.jpg')
+            img = Image.open(path + '/' + base_fanart)
             imgSize = img.size
             w = img.width
             h = img.height
             img2 = img.crop((w - h / 1.5, 0, w, h))
-            img2.save(path + '/' + number + c_word + '-poster.jpg')
-            print('[+]Image Cutted!     ' + path + '/' + number + c_word + '-poster.jpg')
+            img2.save(path + '/' + base_poster)
+            print('[+]Image Cutted!     ' + path + '/' + base_poster)
         except:
             print('[-]Cover cut failed!')
     elif imagecut == 0: # 复制封面
-        shutil.copyfile(path + '/' + number + c_word + '-fanart.jpg',path + '/' + number + c_word + '-poster.jpg')
-        print('[+]Image Copyed!     ' + path + '/' + number + c_word + '-poster.jpg')
+        shutil.copyfile(path + '/' + base_fanart, path + '/' + base_poster)
+        print('[+]Image Copyed!     ' + path + '/' + base_poster)
 
 
-def paste_file_to_folder(filepath, path, number, c_word, conf: config.Config):  # 文件路径，番号，后缀，要移动至的位置
+def paste_file_to_folder(filepath, path, base, conf: config.Config):  # 文件路径，番号，后缀，要移动至的位置
     houzhui = str(re.search('[.](AVI|RMVB|WMV|MOV|MP4|MKV|FLV|TS|WEBM|avi|rmvb|wmv|mov|mp4|mkv|flv|ts|webm)$', filepath).group())
 
     try:
         # 如果soft_link=1 使用软链接
         if conf.soft_link():
-            os.symlink(filepath, path + '/' + number + c_word + houzhui)
+            os.symlink(filepath, path + '/' + base + houzhui)
         else:
-            os.rename(filepath, path + '/' + number + c_word + houzhui)
-        if os.path.exists(os.getcwd() + '/' + number + c_word + '.srt'):  # 字幕移动
-            os.rename(os.getcwd() + '/' + number + c_word + '.srt', path + '/' + number + c_word + '.srt')
+            os.rename(filepath, path + '/' + base + houzhui)
+        if os.path.exists(os.getcwd() + '/' + base + '.srt'):  # 字幕移动
+            os.rename(os.getcwd() + '/' + base + '.srt', path + '/' + base + '.srt')
             print('[+]Sub moved!')
-        elif os.path.exists(os.getcwd() + '/' + number + c_word + '.ssa'):
-            os.rename(os.getcwd() + '/' + number + c_word + '.ssa', path + '/' + number + c_word + '.ssa')
+        elif os.path.exists(os.getcwd() + '/' + base + '.ssa'):
+            os.rename(os.getcwd() + '/' + base + '.ssa', path + '/' + base + '.ssa')
             print('[+]Sub moved!')
-        elif os.path.exists(os.getcwd() + '/' + number + c_word + '.sub'):
-            os.rename(os.getcwd() + '/' + number + c_word + '.sub', path + '/' + number + c_word + '.sub')
+        elif os.path.exists(os.getcwd() + '/' + base + '.sub'):
+            os.rename(os.getcwd() + '/' + base + '.sub', path + '/' + base + '.sub')
             print('[+]Sub moved!')
     except FileExistsError:
         print('[-]File Exists! Please check your movie!')
@@ -440,24 +447,24 @@ def paste_file_to_folder(filepath, path, number, c_word, conf: config.Config):  
         return 
 
 
-def paste_file_to_folder_mode2(filepath, path, multi_part, number, part, c_word, conf):  # 文件路径，番号，后缀，要移动至的位置
+def paste_file_to_folder_mode2(filepath, path, multi_part, base, conf, part=''):  # 文件路径，番号，后缀，要移动至的位置
     if multi_part == 1:
-        number += part  # 这时number会被附加上CD1后缀
+        base += part  # 这时number会被附加上CD1后缀
     houzhui = str(re.search('[.](AVI|RMVB|WMV|MOV|MP4|MKV|FLV|TS|WEBM|avi|rmvb|wmv|mov|mp4|mkv|flv|ts|webm)$', filepath).group())
 
     try:
         if conf.soft_link():
-            os.symlink(filepath, path + '/' + number + part + c_word + houzhui)
+            os.symlink(filepath, path + '/' + base + houzhui)
         else:
-            os.rename(filepath, path + '/' + number + part + c_word + houzhui)
-        if os.path.exists(number + '.srt'):  # 字幕移动
-            os.rename(number + part + c_word + '.srt', path + '/' + number + part + c_word + '.srt')
+            os.rename(filepath, path + '/' + base + houzhui)
+        if os.path.exists(os.getcwd() + '/' + base + '.srt'):  # 字幕移动
+            os.rename(os.getcwd() + '/' + base + '.srt', path + '/' + base + '.srt')
             print('[+]Sub moved!')
-        elif os.path.exists(number + part + c_word + '.ass'):
-            os.rename(number + part + c_word + '.ass', path + '/' + number + part + c_word + '.ass')
+        elif os.path.exists(os.getcwd() + '/' + base + '.ass'):
+            os.rename(os.getcwd() + '/' + base + '.ass', path + '/' + base + '.ass')
             print('[+]Sub moved!')
-        elif os.path.exists(number + part + c_word + '.sub'):
-            os.rename(number + part + c_word + '.sub', path + '/' + number + part + c_word + '.sub')
+        elif os.path.exists(os.getcwd() + '/' + base + '.sub'):
+            os.rename(os.getcwd() + '/' + base + '.sub', path + '/' + base + '.sub')
             print('[+]Sub moved!')
         print('[!]Success')
     except FileExistsError:
@@ -540,28 +547,35 @@ def core_main(file_path, number_th, conf: config.Config):
     # 创建文件夹
     path = create_folder(conf.success_folder(), json_data['location_rule'], json_data, conf)
 
+    # Compute base filename from naming_rule (already evaluated on line 217)
+    naming_rule_evaluated = json_data['naming_rule']
+    if multi_part == 1:
+        naming_rule_evaluated += part  # append CD1 etc.
+
     # main_mode
     #  1: 刮削模式 / Scraping mode
     #  2: 整理模式 / Organizing mode
     if conf.main_mode() == 1:
-        if multi_part == 1:
-            number += part  # 这时number会被附加上CD1后缀
+        base_fanart = naming_rule_evaluated + '.jpg'
+        base_poster = naming_rule_evaluated + '.png'
+        base_thumb = naming_rule_evaluated + '.png'  # same file, different extension alias
+        base_nfo = naming_rule_evaluated
 
         # 检查小封面, 如果image cut为3，则下载小封面
         if imagecut == 3:
-            small_cover_check(path, number, json_data['cover_small'], c_word, conf, filepath, conf.failed_folder())
+            small_cover_check(path, number, json_data['cover_small'], json_data['naming_rule'], conf, filepath, conf.failed_folder())
 
         # creatFolder会返回番号路径
-        image_download(json_data['cover'], number, c_word, path, conf, filepath, conf.failed_folder())
+        image_download(json_data['cover'], naming_rule_evaluated, path, conf, filepath, conf.failed_folder())
 
         # 裁剪图
-        cutImage(imagecut, path, number, c_word)
+        cutImage(imagecut, base_fanart, base_poster, path)
 
         # 打印文件
-        print_files(path, c_word, json_data['naming_rule'], part, cn_sub, json_data, filepath, conf.failed_folder(), tag, json_data['actor_list'], liuchu)
+        print_files(path, base_nfo, naming_rule_evaluated, cn_sub, json_data, filepath, conf.failed_folder(), tag, json_data['actor_list'], liuchu, base_thumb, base_fanart, base_poster)
 
         # 移动文件
-        paste_file_to_folder(filepath, path, number, c_word, conf)
+        paste_file_to_folder(filepath, path, naming_rule_evaluated, conf)
     elif conf.main_mode() == 2:
         # 移动文件
-        paste_file_to_folder_mode2(filepath, path, multi_part, number, part, c_word, conf)
+        paste_file_to_folder_mode2(filepath, path, multi_part, naming_rule_evaluated, conf)
