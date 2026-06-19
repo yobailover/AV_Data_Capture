@@ -199,6 +199,13 @@ def get_data_from_json(file_number, filepath, conf: config.Config):  # 从JSON�
         if 'title' in conf.location_rule() and len(title) > 100:
             location_rule = eval(conf.location_rule().replace("title",'number'))
 
+    # Truncate runtime to pure integer (minutes), strip any unit suffix
+    try:
+        clean_runtime = int(runtime)
+    except (ValueError, TypeError):
+        clean_runtime = 0
+    json_data['runtime'] = str(clean_runtime)
+
     # 返回处理后的json_data
     json_data['title'] = title
     json_data['actor'] = actor
@@ -236,7 +243,7 @@ def small_cover_check(path, number, cover_small, c_word, conf: config.Config, fi
 
 def create_folder(success_folder, location_rule, json_data, conf: config.Config):  # 创建文件夹
     title, studio, year, outline, runtime, director, actor_photo, release, number, cover, website, series, label = get_info(json_data)
-    if len(location_rule) > 240:  # 新建成功输出文件夹
+    if len(location_rule) > 240 or len(success_folder + '/' + location_rule) > 240:  # 新建成功输出文件夹
         path = success_folder + '/' + location_rule.replace("'actor'", "'manypeople'", 3).replace("actor","'manypeople'",3)  # path为影片+元数据所在目录
     else:
         path = success_folder + '/' + location_rule
@@ -265,7 +272,7 @@ def download_file_with_filename(url, filename, path, conf: config.Config, filepa
                     os.makedirs(path)
                 proxies = get_proxy(proxy, proxytype)
                 headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'}
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0'}
                 r = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
                 if r == '':
                     print('[-]Movie Data not found!')
@@ -277,7 +284,7 @@ def download_file_with_filename(url, filename, path, conf: config.Config, filepa
                 if not os.path.exists(path):
                     os.makedirs(path)
                 headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'}
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0'}
                 r = requests.get(url, timeout=timeout, headers=headers)
                 if r == '':
                     print('[-]Movie Data not found!')

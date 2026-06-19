@@ -102,7 +102,8 @@ def parse_metadata_from_detail(html):
     if og_duration_seconds:
         try:
             total_minutes = int(og_duration_seconds[0]) // 60
-            result['runtime'] = str(total_minutes) + ' min'
+            result['runtime'] = str(total_minutes)
+        except (ValueError, TypeError):
         except (ValueError, TypeError):
             pass
 
