@@ -18,6 +18,7 @@ from WebCrawler import mgstage
 from WebCrawler import xcity
 from WebCrawler import javlib
 from WebCrawler import dlsite
+from WebCrawler import missav
 
 
 def escape_path(path, escape_literals: str):  # Remove escape literals
@@ -58,6 +59,7 @@ def get_data_from_json(file_number, filepath, conf: config.Config):  # ä»ŽJSONè¿
         "xcity": xcity.main,
         "javlib": javlib.main,
         "dlsite": dlsite.main,
+        "missav": missav.main,
     }
 
     # default fetch order list, from the beginning to the end
