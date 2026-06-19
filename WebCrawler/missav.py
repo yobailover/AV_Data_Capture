@@ -171,6 +171,7 @@ def main(number):
             'tag': ', '.join(meta['tag']),
             'label': meta['label'],
             'year': get_year_from_release(meta['release']),
+            'series': '',
             'actor_photo': {},
             'website': f'https://missav.ws/ja/{number.lower()}',
             'source': 'missav.py',
