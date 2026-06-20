@@ -189,6 +189,7 @@ def get_data_from_json(file_number, filepath, conf: config.Config):  # 从JSON�
     studio = studio.replace('ワープエンタテインメント','WAAP Entertainment')
     studio = re.sub('.*/妄想族','妄想族',studio)
     studio = studio.replace('/',' ')
+    json_data['studio'] = studio
     # ===  替换Studio片假名 END
     
     location_rule = eval(conf.location_rule())
@@ -348,8 +349,10 @@ def print_files(path, base_nfo, naming_rule_evaluated, cn_sub, json_data, filepa
             print('<?xml version="1.0" encoding="UTF-8" ?>', file=code)
             print("<movie>", file=code)
             print(" <title>" + base_nfo + "</title>", file=code)
-            print("  <set>", file=code)
-            print("  </set>", file=code)
+            if series:
+                print("  <set>", file=code)
+                print("   <name>" + series + "</name>", file=code)
+                print("  </set>", file=code)
             print("  <studio>" + studio + "</studio>", file=code)
             print("  <year>" + year + "</year>", file=code)
             print("  <outline>" + outline + "</outline>", file=code)
@@ -375,7 +378,8 @@ def print_files(path, base_nfo, naming_rule_evaluated, cn_sub, json_data, filepa
             try:
                 for i in tag:
                     print("  <tag>" + i + "</tag>", file=code)
-                print("  <tag>" + series + "</tag>", file=code)
+                if series:
+                    print("  <tag>" + series + "</tag>", file=code)
             except:
                 aaaaa = ''
             try:

@@ -56,6 +56,7 @@ def parse_metadata_from_detail(html):
         'runtime': '',
         'director': '',
         'tag': [],         # genre tags
+        'series': '',      # series name (optional, not all movies have it)
         '_og_image': og_image_url[0] if og_image_url else '',
     }
 
@@ -89,6 +90,10 @@ def parse_metadata_from_detail(html):
         elif label_text == 'レーベル':
             links = block.xpath('.//a/text()')
             result['label'] = links[0].strip() if links else get_value_from_block(block)
+        elif label_text == 'シリーズ':
+            # Series field: value is in <a> link text
+            links = block.xpath('.//a/text()')
+            result['series'] = links[0].strip() if links else get_value_from_block(block)
         elif label_text in ('監督', '导演'):
             links = block.xpath('.//a/text()')
             result['director'] = links[0].strip() if links else get_value_from_block(block)
@@ -171,7 +176,7 @@ def main(number):
             'tag': ', '.join(meta['tag']),
             'label': meta['label'],
             'year': get_year_from_release(meta['release']),
-            'series': '',
+            'series': meta.get('series', ''),
             'actor_photo': {},
             'website': f'https://missav.ws/ja/{number.lower()}',
             'source': 'missav.py',
