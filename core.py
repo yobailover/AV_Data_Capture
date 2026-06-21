@@ -220,6 +220,36 @@ def get_data_from_json(file_number, filepath, conf: config.Config):  # 从JSON�
     # strip the duplicate prefix to avoid "CAWD-969 CAWD-969 ..."
     if title.startswith(number):
         naming_result = title
+
+    # Truncate naming_result to max 80 characters.
+    # When truncating, preserve any actor name suffixes that appear at the end of the title,
+    # and append "\u2026" (ellipsis) where truncation occurs.
+    MAX_FILENAME_LEN = 80
+    if len(naming_result) > MAX_FILENAME_LEN:
+        # Build a list of valid actor names from actor_list for suffix matching
+        actors = [a.strip() for a in actor_list if a.strip()]
+        # Find the longest actor name that appears at the end of naming_result
+        suffix_actor = ''
+        for act in sorted(actors, key=len, reverse=True):
+            if naming_result.endswith(act) and len(act) > 0:
+                suffix_actor = act
+                break
+
+        # Calculate how much room we need for the ellipsis + actor suffix
+        ellipsis = '\u2026'  # …
+        suffix_len = len(suffix_actor)
+        # We want: truncated_part + ellipsis + suffix_actor <= MAX_FILENAME_LEN
+        # So truncated_part max length = MAX - len(ellipsis) - len(suffix_actor)
+        trunc_max = MAX_FILENAME_LEN - len(ellipsis) - suffix_len
+        if trunc_max < 1:
+            trunc_max = 0
+
+        if trunc_max > 0:
+            naming_result = naming_result[:trunc_max] + ellipsis + suffix_actor
+        else:
+            # No room for actor suffix; just truncate with ellipsis
+            naming_result = naming_result[:MAX_FILENAME_LEN - len(ellipsis)] + ellipsis
+
     json_data['naming_rule'] = naming_result
     json_data['location_rule'] = location_rule
     json_data['year'] = year
